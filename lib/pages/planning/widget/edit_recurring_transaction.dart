@@ -26,6 +26,7 @@ class _EditRecurringTransactionState
     extends ConsumerState<EditRecurringTransaction> {
   final TextEditingController amountController = TextEditingController();
   final TextEditingController noteController = TextEditingController();
+  late DateTime startDate;
 
   @override
   void initState() {
@@ -37,6 +38,9 @@ class _EditRecurringTransactionState
         '';
     noteController.text =
         ref.read(selectedRecurringTransactionUpdateProvider)?.note ?? '';
+    startDate =
+        ref.read(selectedRecurringTransactionUpdateProvider)?.fromDate ??
+        DateTime.now();
 
     super.initState();
   }
@@ -150,7 +154,7 @@ class _EditRecurringTransactionState
                       NonEditableDetailsListTile(
                         title: "Date Start",
                         icon: Icons.calendar_month,
-                        value: ref.watch(selectedDateProvider).formatEDMY(),
+                        value: startDate.formatEDMY(),
                       ),
                       const RecurrenceListTileEdit(),
                     ],
