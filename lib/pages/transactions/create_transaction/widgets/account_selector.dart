@@ -26,7 +26,8 @@ class AccountSelector extends ConsumerStatefulWidget {
 class _AccountSelectorState extends ConsumerState<AccountSelector> {
   @override
   Widget build(BuildContext context) {
-    final accountsList = ref.watch(accountsProvider);
+    final accountsList = ref.watch(activeAccountsProvider);
+    final frequentAccounts = ref.watch(frequentAccountsProvider);
     final fromAccount = ref.watch(selectedBankAccountProvider);
     final toAccount = ref.watch(bankAccountTransferProvider);
 
@@ -72,7 +73,7 @@ class _AccountSelectorState extends ConsumerState<AccountSelector> {
                     color: Theme.of(context).colorScheme.surface,
                     height: 74,
                     width: double.infinity,
-                    child: accountsList.when(
+                    child: frequentAccounts.when(
                       data: (accounts) => ListView.builder(
                         itemCount: (accounts.length > 4) ? 4 : accounts.length,
                         scrollDirection: Axis.horizontal,

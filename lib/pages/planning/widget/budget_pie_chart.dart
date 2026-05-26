@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -20,21 +21,28 @@ class BudgetPieChart extends ConsumerWidget {
   final List<CategoryTransaction> categories;
 
   List<PieChartSectionData> showingSections(double totalBudget) {
-    return List.generate(budgets.length, (i) {
-      final Budget budget = budgets.elementAt(i);
-      final CategoryTransaction category = categories.firstWhere(
+    final List<PieChartSectionData> sections = [];
+
+    for (final budget in budgets) {
+      final category = categories.firstWhereOrNull(
         (cat) => cat.id == budget.idCategory,
       );
 
-      double value = (budget.amountLimit / totalBudget) * 100;
+      if (category == null) continue;
 
-      return PieChartSectionData(
-        color: categoryColorList[category.color],
-        value: value,
-        title: "",
-        radius: 20,
+      final value = (budget.amountLimit / totalBudget) * 100;
+
+      sections.add(
+        PieChartSectionData(
+          color: categoryColorList[category.color],
+          value: value,
+          title: "",
+          radius: 20,
+        ),
       );
-    });
+    }
+
+    return sections;
   }
 
   @override

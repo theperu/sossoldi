@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -22,7 +23,7 @@ class BudgetCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final budgetsAsync = ref.watch(budgetsProvider);
     final transactionsAsync = ref.watch(monthlyTransactionsProvider);
-    final categories = ref.watch(allParentCategoriesProvider).value ?? [];
+    final categoriesAsync = ref.watch(allParentCategoriesProvider);
     final currencyState = ref.watch(currencyStateProvider);
 
     return DefaultContainer(
@@ -30,93 +31,105 @@ class BudgetCard extends ConsumerWidget {
       child: budgetsAsync.when(
         data: (budgets) {
           return budgets.isNotEmpty
-              ? transactionsAsync.when(
-                  data: (transactions) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Composition",
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        BudgetPieChart(
-                          budgets: budgets,
-                          categories: categories,
-                        ),
-                        Text(
-                          "Progress",
-                          style: Theme.of(context).textTheme.titleLarge,
-                        ),
-                        const SizedBox(height: Sizes.sm),
-                        ListView.separated(
-                          shrinkWrap: true,
-                          physics: const NeverScrollableScrollPhysics(),
-                          itemCount: budgets.length,
-                          itemBuilder: (BuildContext context, int index) {
-                            final budget = budgets[index];
-                            num spent = num.parse(
-                              transactions
-                                  .where(
-                                    (t) =>
-                                        t.idCategory == budget.idCategory ||
-                                        t.categoryParent == budget.idCategory,
-                                  )
-                                  .fold(0.0, (sum, t) => sum + t.amount)
-                                  .toCurrency(),
-                            );
-                            CategoryTransaction category = categories
-                                .firstWhere(
-                                  (cat) => cat.id == budget.idCategory,
+              ? categoriesAsync.when(
+                  data: (categories) {
+                    return transactionsAsync.when(
+                      data: (transactions) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              "Composition",
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            BudgetPieChart(
+                              budgets: budgets,
+                              categories: categories,
+                            ),
+                            Text(
+                              "Progress",
+                              style: Theme.of(context).textTheme.titleLarge,
+                            ),
+                            const SizedBox(height: Sizes.sm),
+                            ListView.separated(
+                              shrinkWrap: true,
+                              physics: const NeverScrollableScrollPhysics(),
+                              itemCount: budgets.length,
+                              itemBuilder: (BuildContext context, int index) {
+                                final budget = budgets[index];
+                                num spent = num.parse(
+                                  transactions
+                                      .where(
+                                        (t) =>
+                                            t.idCategory == budget.idCategory ||
+                                            t.categoryParent ==
+                                                budget.idCategory,
+                                      )
+                                      .fold(0.0, (sum, t) => sum + t.amount)
+                                      .toCurrency(),
                                 );
-                            return Column(
-                              children: [
-                                Row(
+                                CategoryTransaction? category = categories
+                                    .firstWhereOrNull(
+                                      (cat) => cat.id == budget.idCategory,
+                                    );
+
+                                if (category == null) return const SizedBox();
+
+                                return Column(
                                   children: [
-                                    Text(
-                                      budget.name!,
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.normal,
-                                      ),
+                                    Row(
+                                      children: [
+                                        Text(
+                                          budget.name!,
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.normal,
+                                          ),
+                                        ),
+                                        const Spacer(),
+                                        if (spent >= (budget.amountLimit * 0.9))
+                                          const Icon(
+                                            Icons.error_outline,
+                                            color: Colors.red,
+                                          ),
+                                        Text(
+                                          "$spent/${budget.amountLimit.toCurrency()}${currencyState.symbol}",
+                                          style: const TextStyle(
+                                            fontWeight: FontWeight.normal,
+                                          ),
+                                        ),
+                                      ],
                                     ),
-                                    const Spacer(),
-                                    if (spent >= (budget.amountLimit * 0.9))
-                                      const Icon(
-                                        Icons.error_outline,
-                                        color: Colors.red,
-                                      ),
-                                    Text(
-                                      "$spent/${budget.amountLimit.toCurrency()}${currencyState.symbol}",
-                                      style: const TextStyle(
-                                        fontWeight: FontWeight.normal,
-                                      ),
+                                    const SizedBox(height: Sizes.xs),
+                                    LinearProgressBar(
+                                      type: BarType.category,
+                                      colorIndex: category.color,
+                                      amount:
+                                          (spent == 0 ||
+                                              budget.amountLimit == 0)
+                                          ? 0
+                                          : spent,
+                                      total: budget.amountLimit,
                                     ),
                                   ],
-                                ),
-                                const SizedBox(height: Sizes.xs),
-                                LinearProgressBar(
-                                  type: BarType.category,
-                                  colorIndex: category.color,
-                                  amount:
-                                      (spent == 0 || budget.amountLimit == 0)
-                                      ? 0
-                                      : spent,
-                                  total: budget.amountLimit,
-                                ),
-                              ],
-                            );
-                          },
-                          separatorBuilder: (context, index) {
-                            return const SizedBox(height: Sizes.lg);
-                          },
-                        ),
-                      ],
+                                );
+                              },
+                              separatorBuilder: (context, index) {
+                                return const SizedBox(height: Sizes.lg);
+                              },
+                            ),
+                          ],
+                        );
+                      },
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) {
+                        return Text('Error: $err');
+                      },
                     );
                   },
                   loading: () =>
                       const Center(child: CircularProgressIndicator()),
-                  error: (err, stack) {
-                    return Text('Error: $err');
-                  },
+                  error: (err, stack) => Text('Error: $err'),
                 )
               : Column(
                   children: [

@@ -13,7 +13,7 @@ class CategoryList extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final categorysList = ref.watch(allParentCategoriesProvider);
+    final categoriesList = ref.watch(allParentCategoriesProvider);
     ref.listen(selectedCategoryProvider, (_, _) {});
     return Scaffold(
       appBar: AppBar(
@@ -21,6 +21,7 @@ class CategoryList extends ConsumerWidget {
           icon: const Icon(Icons.arrow_back_ios_new),
           onPressed: () => Navigator.pop(context),
         ),
+        title: const Text('Categories'),
         actions: [
           IconButton(
             onPressed: () {
@@ -33,43 +34,15 @@ class CategoryList extends ConsumerWidget {
         ],
       ),
       body: SingleChildScrollView(
+        padding: const EdgeInsets.only(top: Sizes.xl),
         physics: const BouncingScrollPhysics(),
         child: Column(
           children: [
-            Padding(
-              padding: const EdgeInsets.symmetric(
-                vertical: Sizes.xl,
-                horizontal: Sizes.lg,
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                    padding: const EdgeInsets.all(Sizes.sm),
-                    child: Icon(
-                      Icons.list_alt,
-                      size: 24.0,
-                      color: Theme.of(context).colorScheme.onPrimary,
-                    ),
-                  ),
-                  const SizedBox(width: Sizes.md),
-                  Text(
-                    "Your categories",
-                    style: Theme.of(context).textTheme.headlineLarge!.copyWith(
-                      color: Theme.of(context).colorScheme.primary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            categorysList.when(
-              data: (categorys) => ReorderableListView.builder(
+            categoriesList.when(
+              data: (categories) => ReorderableListView.builder(
                 shrinkWrap: true,
                 physics: const NeverScrollableScrollPhysics(),
-                itemCount: categorys.length,
+                itemCount: categories.length,
                 onReorder: (oldIndex, newIndex) {
                   ref
                       .read(categoriesProvider.notifier)
@@ -83,7 +56,7 @@ class CategoryList extends ConsumerWidget {
                   );
                 },
                 itemBuilder: (context, i) {
-                  CategoryTransaction category = categorys[i];
+                  CategoryTransaction category = categories[i];
                   return Container(
                     key: ValueKey(category.id),
                     margin: const EdgeInsets.only(bottom: Sizes.lg),

@@ -118,7 +118,7 @@ class RecurringPaymentSection extends ConsumerWidget {
           );
         },
         loading: () {
-          return const CircularProgressIndicator();
+          return const Center(child: CircularProgressIndicator());
         },
         error: (error, _) {
           return Text('Error: $error');
