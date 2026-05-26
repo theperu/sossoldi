@@ -265,3 +265,8 @@ Future<List<BankAccount>> activeAccounts(Ref ref) async {
   final accounts = ref.watch(accountsProvider).value ?? [];
   return accounts.where((account) => account.deletedAt == null).toList();
 }
+
+@riverpod
+Future<List<BankAccount>> frequentAccounts(Ref ref) async {
+  return await ref.read(accountRepositoryProvider).selectFrequentAccounts();
+}

@@ -103,6 +103,27 @@ class AccountRepository {
     return result.map((json) => BankAccount.fromJson(json)).toList();
   }
 
+  Future<List<BankAccount>> selectFrequentAccounts() async {
+    final db = await _sossoldiDB.database;
+    // Select the last 100 transactions, group by account and return the
+    // top 5 most used accounts ordered by usage count desc.
+    final result = await db.rawQuery('''
+        SELECT b.*
+        FROM "$bankAccountTable" b
+        JOIN (
+          SELECT * FROM "$transactionTable"
+          ORDER BY "${TransactionFields.date}" DESC
+          LIMIT 100
+        ) t ON t."${TransactionFields.idBankAccount}" = b."${BankAccountFields.id}" OR t."${TransactionFields.idBankAccountTransfer}" = b."${BankAccountFields.id}"
+        WHERE b."${BankAccountFields.active}" = 1 AND ${BankAccountFields.deletedAt} IS NULL
+        GROUP BY b."${BankAccountFields.id}"
+        ORDER BY COUNT(t."${TransactionFields.id}") DESC
+        LIMIT 5
+      ''');
+
+    return result.map((json) => BankAccount.fromJson(json)).toList();
+  }
+
   Future<int> updateItem(BankAccount item) async {
     final db = await _sossoldiDB.database;
 
