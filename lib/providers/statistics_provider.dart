@@ -37,7 +37,7 @@ class Statistics extends _$Statistics {
     final accountsAsync = ref.read(accountsProvider);
     final accounts = accountsAsync.value ?? [];
     double currentBalance = accounts
-        .where((account) => account.countNetWorth)
+        .where((account) => account.countNetWorth && account.deletedAt == null)
         .fold(0.0, (sum, account) => sum + (account.total ?? 0));
 
     List<FlSpot> spots = [];
