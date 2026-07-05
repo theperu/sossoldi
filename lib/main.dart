@@ -11,7 +11,10 @@ import 'package:flutter_phoenix/flutter_phoenix.dart';
 import 'providers/settings_provider.dart';
 import 'providers/theme_provider.dart';
 import 'routes/routes.dart';
+import 'services/currency/exchange_rate_service.dart';
 import 'services/database/repositories/recurring_transactions_repository.dart';
+import 'services/database/repositories/currency_repository.dart';
+import 'services/database/repositories/exchange_rate_repository.dart';
 import 'services/database/sossoldi_database.dart';
 import 'services/notifications/notifications_service.dart';
 import 'ui/theme/app_theme.dart';
@@ -62,6 +65,30 @@ void main() async {
       'last_recurring_transactions_check',
       DateTime.now().toIso8601String(),
     );
+  }
+
+  // perform exchange rates refresh checks
+  DateTime? lastRateUpdate = sharedPreferences.getString('last_rate_update') != null
+      ? DateTime.parse(sharedPreferences.getString('last_rate_update')!)
+      : null;
+
+  if (lastRateUpdate == null ||
+      DateTime.now().difference(lastRateUpdate).inDays >= 1) {
+    try {
+      final exchangeRateService = ExchangeRateService(
+        exchangeRateRepository: ExchangeRateRepository(
+          database: SossoldiDatabase.instance,
+        ),
+        currencyRepository: CurrencyRepository(database: SossoldiDatabase.instance),
+      );
+      await exchangeRateService.updateAll();
+      await sharedPreferences.setString(
+        'last_rate_update',
+        DateTime.now().toIso8601String(),
+      );
+    } catch (_) {
+      // Keep cached rates if network is unavailable.
+    }
   }
 
   final LocalAuthentication auth = LocalAuthentication();

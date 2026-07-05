@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../../ui/assets.dart';
 import '../../ui/device.dart';
-import 'widgets/budget_setup.dart';
+import 'widgets/main_currency_setup.dart';
 import '/constants/style.dart';
 
 class Onboarding extends StatefulWidget {
@@ -56,7 +56,7 @@ class _OnboardingState extends State<Onboarding> {
                   Navigator.push(
                     context,
                     MaterialPageRoute(
-                      builder: (context) => const BudgetSetup(),
+                      builder: (context) => const MainCurrencySetup(),
                     ),
                   );
                 },

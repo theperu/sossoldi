@@ -5,7 +5,7 @@ import '../../../constants/constants.dart';
 import '../../../model/bank_account.dart';
 import '../../../constants/style.dart';
 import '../../../providers/accounts_provider.dart';
-import '../../../providers/currency_provider.dart';
+import '../../../services/currency/currency_display_policy.dart';
 import '../../../ui/device.dart';
 import '../../../ui/extensions.dart';
 import '../../../ui/widgets/blur_widget.dart';
@@ -19,7 +19,9 @@ class AccountsSum extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final currencyState = ref.watch(currencyStateProvider);
+    final accountToken = CurrencyDisplayPolicy.displayTokenForCode(
+      account.currency,
+    );
     ref.listen(selectedAccountProvider, (_, _) {});
     return Container(
       decoration: BoxDecoration(
@@ -78,7 +80,7 @@ class AccountsSum extends ConsumerWidget {
                                 style: Theme.of(context).textTheme.titleSmall,
                               ),
                               TextSpan(
-                                text: currencyState.symbol,
+                                text: accountToken,
                                 style: Theme.of(context).textTheme.bodySmall
                                     ?.apply(
                                       fontFeatures: [

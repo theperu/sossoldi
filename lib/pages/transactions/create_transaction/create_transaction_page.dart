@@ -8,6 +8,7 @@ import '../../../constants/style.dart';
 import '../../../model/transaction.dart';
 import '../../../providers/accounts_provider.dart';
 import '../../../providers/categories_provider.dart';
+import '../../../providers/exchange_rate_provider.dart';
 import '../../../providers/recurring_transactions_provider.dart';
 import '../../../providers/transactions_provider.dart';
 import '../../../ui/device.dart';
@@ -35,6 +36,7 @@ class _CreateTransactionPage extends ConsumerState<CreateTransactionPage> {
   final TextEditingController noteController = TextEditingController();
   bool recurrencyEditingPermitted = true;
   bool _isSaveEnabled = false;
+  bool _didRateRetry = false;
 
   @override
   void initState() {
@@ -124,7 +126,57 @@ class _CreateTransactionPage extends ConsumerState<CreateTransactionPage> {
         });
   }
 
+  bool _transactionSaveFailed() {
+    final state = ref.read(transactionsProvider);
+    return state.hasError;
+  }
+
+  void _showSaveErrorIfNeeded() {
+    final state = ref.read(transactionsProvider);
+    if (!state.hasError || !mounted) {
+      return;
+    }
+
+    final message = state.error?.toString() ??
+        'Unable to save transaction. Fetch latest rates and try again.';
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message)),
+    );
+
+    if (_didRateRetry) {
+      return;
+    }
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: const Text('Unable to convert. Fetch latest rates and retry?'),
+        action: SnackBarAction(
+          label: 'Fetch latest rates',
+          onPressed: () async {
+            try {
+              await ref.read(exchangeRateServiceProvider).updateAll();
+              if (!_didRateRetry) {
+                _didRateRetry = true;
+                await _persistTransaction(resetRetryFlag: false);
+              }
+            } catch (_) {
+              // Keep the current error message visible.
+            }
+          },
+        ),
+      ),
+    );
+  }
+
   void _createOrUpdateTransaction() async {
+    await _persistTransaction(resetRetryFlag: true);
+  }
+
+  Future<void> _persistTransaction({required bool resetRetryFlag}) async {
+    if (resetRetryFlag) {
+      _didRateRetry = false;
+    }
+
     final selectedType = ref.read(selectedTransactionTypeProvider);
 
     final cleanAmount = getCleanAmountString();
@@ -149,7 +201,13 @@ class _CreateTransactionPage extends ConsumerState<CreateTransactionPage> {
                         noteController.text,
                         value.id,
                       )
-                      .whenComplete(() => _refreshAccountAndNavigateBack());
+                      .whenComplete(() {
+                        if (!_transactionSaveFailed()) {
+                          _refreshAccountAndNavigateBack();
+                        } else {
+                          _showSaveErrorIfNeeded();
+                        }
+                      });
                 }
               });
         } else {
@@ -161,7 +219,13 @@ class _CreateTransactionPage extends ConsumerState<CreateTransactionPage> {
                 noteController.text,
                 widget.transaction!.idRecurringTransaction,
               )
-              .whenComplete(() => _refreshAccountAndNavigateBack());
+              .whenComplete(() {
+                if (!_transactionSaveFailed()) {
+                  _refreshAccountAndNavigateBack();
+                } else {
+                  _showSaveErrorIfNeeded();
+                }
+              });
         }
       } else {
         if (selectedType == TransactionType.transfer) {
@@ -169,7 +233,13 @@ class _CreateTransactionPage extends ConsumerState<CreateTransactionPage> {
             await ref
                 .read(transactionsProvider.notifier)
                 .create(cleanAmount.toNum(), noteController.text)
-                .whenComplete(() => _refreshAccountAndNavigateBack());
+                .whenComplete(() {
+                  if (!_transactionSaveFailed()) {
+                    _refreshAccountAndNavigateBack();
+                  } else {
+                    _showSaveErrorIfNeeded();
+                  }
+                });
           }
         } else {
           // It's an income or an expense
@@ -187,7 +257,11 @@ class _CreateTransactionPage extends ConsumerState<CreateTransactionPage> {
                   .read(transactionsProvider.notifier)
                   .create(cleanAmount.toNum(), noteController.text);
             }
-            _refreshAccountAndNavigateBack();
+            if (!_transactionSaveFailed()) {
+              _refreshAccountAndNavigateBack();
+            } else {
+              _showSaveErrorIfNeeded();
+            }
           }
         }
       }

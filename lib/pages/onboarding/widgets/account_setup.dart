@@ -6,6 +6,8 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../constants/constants.dart';
 import '../../../providers/accounts_provider.dart';
+import '../../../providers/currency_provider.dart';
+import '../../../services/currency/currency_display_policy.dart';
 import '../../../ui/formatters/decimal_text_input_formatter.dart';
 import '../../../ui/device.dart';
 import '/constants/style.dart';
@@ -47,6 +49,11 @@ class _AccountSetupState extends ConsumerState<AccountSetup> {
 
   @override
   Widget build(BuildContext context) {
+    final currencyState = ref.watch(currencyStateProvider);
+    final displayCurrency = CurrencyDisplayPolicy.displayTokenForCode(
+      currencyState.code,
+    );
+
     return Scaffold(
       backgroundColor: blue7,
       resizeToAvoidBottomInset: false,
@@ -56,7 +63,7 @@ class _AccountSetupState extends ConsumerState<AccountSetup> {
           child: Column(
             children: [
               Text(
-                "STEP 2 OF 2",
+                "STEP 3 OF 3",
                 style: Theme.of(context).textTheme.labelSmall,
               ),
               const SizedBox(height: Sizes.xl),
@@ -175,8 +182,8 @@ class _AccountSetupState extends ConsumerState<AccountSetup> {
                             DecimalTextInputFormatter(decimalDigits: 2),
                           ],
                           decoration: InputDecoration(
-                            hintText: "e.g 1300 €",
-                            suffixText: "€",
+                            hintText: "e.g 1300 $displayCurrency",
+                            suffixText: displayCurrency,
                             errorStyle: Theme.of(context).textTheme.bodyLarge
                                 ?.copyWith(fontSize: 10, color: red),
                             hintStyle: Theme.of(context).textTheme.bodySmall,

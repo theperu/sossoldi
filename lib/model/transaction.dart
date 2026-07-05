@@ -10,6 +10,10 @@ class TransactionFields extends BaseEntityFields {
   static String id = BaseEntityFields.getId;
   static String date = 'date';
   static String amount = 'amount';
+  static String amountInMainCurrency = 'amountInMainCurrency';
+  static String transferDestinationAmount = 'transferDestinationAmount';
+  static String transferEffectiveRate = 'transferEffectiveRate';
+  static String currency = 'currency';
   static String type = 'type';
   static String note = 'note';
   static String idCategory = 'idCategory'; // FK
@@ -30,6 +34,10 @@ class TransactionFields extends BaseEntityFields {
     BaseEntityFields.id,
     date,
     amount,
+    amountInMainCurrency,
+    transferDestinationAmount,
+    transferEffectiveRate,
+    currency,
     type,
     note,
     idCategory,
@@ -90,6 +98,10 @@ class Transaction extends BaseEntity {
 
   final DateTime date;
   final num amount;
+  final num? amountInMainCurrency;
+  final num? transferDestinationAmount;
+  final num? transferEffectiveRate;
+  final String? currency;
   final TransactionType type;
   final String? note;
   final int? idCategory;
@@ -108,6 +120,10 @@ class Transaction extends BaseEntity {
     super.id,
     required this.date,
     required this.amount,
+    this.amountInMainCurrency,
+    this.transferDestinationAmount,
+    this.transferEffectiveRate,
+    this.currency,
     required this.type,
     this.note,
     this.idCategory,
@@ -129,6 +145,10 @@ class Transaction extends BaseEntity {
     Object? id = _unset,
     DateTime? date,
     num? amount,
+    num? amountInMainCurrency,
+    num? transferDestinationAmount,
+    num? transferEffectiveRate,
+    String? currency,
     TransactionType? type,
     String? note,
     int? idCategory,
@@ -142,6 +162,11 @@ class Transaction extends BaseEntity {
     id: id == _unset ? this.id : (id as int?),
     date: date ?? this.date,
     amount: amount ?? this.amount,
+    amountInMainCurrency: amountInMainCurrency ?? this.amountInMainCurrency,
+    transferDestinationAmount:
+      transferDestinationAmount ?? this.transferDestinationAmount,
+    transferEffectiveRate: transferEffectiveRate ?? this.transferEffectiveRate,
+    currency: currency ?? this.currency,
     type: type ?? this.type,
     note: note ?? this.note,
     idCategory: idCategory ?? this.idCategory,
@@ -159,6 +184,11 @@ class Transaction extends BaseEntity {
       id: json[BaseEntityFields.id] as int?,
       date: DateTime.parse(json[TransactionFields.date] as String),
       amount: json[TransactionFields.amount] as num,
+        amountInMainCurrency: json[TransactionFields.amountInMainCurrency] as num?,
+        transferDestinationAmount:
+          json[TransactionFields.transferDestinationAmount] as num?,
+        transferEffectiveRate: json[TransactionFields.transferEffectiveRate] as num?,
+        currency: json[TransactionFields.currency] as String?,
       type: TransactionType.fromJson(json[TransactionFields.type] as String),
       note: json[TransactionFields.note] as String?,
       idCategory: json[TransactionFields.idCategory] as int?,
@@ -189,6 +219,10 @@ class Transaction extends BaseEntity {
       TransactionFields.id: id,
       TransactionFields.date: date.toIso8601String(),
       TransactionFields.amount: amount,
+      TransactionFields.amountInMainCurrency: amountInMainCurrency,
+      TransactionFields.transferDestinationAmount: transferDestinationAmount,
+      TransactionFields.transferEffectiveRate: transferEffectiveRate,
+      TransactionFields.currency: currency,
       TransactionFields.type: type.toJson(),
       TransactionFields.note: note,
       TransactionFields.idCategory: idCategory,

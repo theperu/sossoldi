@@ -3,6 +3,8 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../model/recurring_transaction.dart';
 import '../model/transaction.dart';
+import 'currency_provider.dart';
+import 'exchange_rate_provider.dart';
 import '../services/database/repositories/recurring_transactions_repository.dart';
 import '../services/database/repositories/transactions_repository.dart';
 import 'accounts_provider.dart';
@@ -75,9 +77,19 @@ class RecurringTransactionsNotifier extends _$RecurringTransactionsNotifier {
       if (date.year == now.year &&
           date.month == now.month &&
           date.day == now.day) {
+        final mainCurrency = ref.read(currencyStateProvider);
+        final exchangeRateService = ref.read(exchangeRateServiceProvider);
+        final convertedAmount = await exchangeRateService.convertToMain(
+          amount.toDouble(),
+          bankAccount.currency,
+        );
         final transaction = Transaction(
           date: date,
           amount: amount,
+          amountInMainCurrency: convertedAmount,
+          currency: bankAccount.currency == mainCurrency.code
+              ? mainCurrency.code
+              : bankAccount.currency,
           type: type,
           note: label,
           idBankAccount: bankAccount.id!,
@@ -174,7 +186,9 @@ Future<List<RecurringPaymentsGrouped>> recurringPayments(
 
     groupedData.putIfAbsent(year, () => {});
     groupedData[year]!.putIfAbsent(month, () => 0);
-    groupedData[year]![month] = groupedData[year]![month]! + transaction.amount;
+    groupedData[year]![month] =
+      groupedData[year]![month]! +
+      (transaction.amountInMainCurrency ?? transaction.amount);
   }
   List<RecurringPaymentsGrouped> result = [];
   groupedData.forEach((year, transactionsByMonth) {

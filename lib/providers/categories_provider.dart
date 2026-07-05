@@ -288,7 +288,9 @@ Future<Map<CategoryTransaction, double>> categoryMap(Ref ref) async {
         )
         .fold(
           0.0,
-          (previousValue, transaction) => previousValue + transaction.amount,
+          (previousValue, transaction) =>
+              previousValue +
+              (transaction.amountInMainCurrency ?? transaction.amount),
         );
 
     categoriesMap[category] = categoryType == CategoryTransactionType.income
@@ -315,7 +317,9 @@ Future<double> categoryTotalAmount(Ref ref) async {
 
   final totalAmount = transactions.fold<double>(
     0,
-    (previousValue, transaction) => previousValue + transaction.amount,
+    (previousValue, transaction) =>
+        previousValue +
+        (transaction.amountInMainCurrency ?? transaction.amount),
   );
 
   return categoryType == CategoryTransactionType.income
@@ -344,7 +348,8 @@ Future<List<double>> monthlyTotals(Ref ref) async {
 
   for (var transaction in transactions) {
     int month = transaction.date.month - 1;
-    monthlyTotals[month] += transaction.amount.abs();
+    monthlyTotals[month] +=
+        (transaction.amountInMainCurrency ?? transaction.amount).abs();
   }
   return monthlyTotals;
 }
@@ -386,7 +391,8 @@ Future<List<ParentCategoryWithSubcategoriesData>> categoryWithSubcategoriesData(
     categoryTransactions.addAll(parentTransactions);
     total += parentTransactions.fold(
       0,
-      (previousValue, trnsc) => previousValue + trnsc.amount,
+      (previousValue, trnsc) =>
+          previousValue + (trnsc.amountInMainCurrency ?? trnsc.amount),
     );
     final subcategories = categories.where(
       (cat) => cat.parent == parentCategory.id,
@@ -397,7 +403,8 @@ Future<List<ParentCategoryWithSubcategoriesData>> categoryWithSubcategoriesData(
       );
       num subcategoryTotal = subcategoryTransactions.fold(
         0,
-        (previousValue, trnsc) => previousValue + trnsc.amount,
+        (previousValue, trnsc) =>
+            previousValue + (trnsc.amountInMainCurrency ?? trnsc.amount),
       );
       if (subcategoryTotal != 0) {
         subcategoryMap[subcategory] = trnscType == TransactionType.expense

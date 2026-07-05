@@ -31,10 +31,10 @@ class CurrencyRepository {
     } else {
       //fallback
       return const Currency(
-        id: 2,
-        symbol: '\$',
-        code: 'USD',
-        name: "United States Dollar",
+        id: 1,
+        symbol: '€',
+        code: 'EUR',
+        name: "Euro",
         mainCurrency: true,
       );
     }
@@ -103,8 +103,15 @@ class CurrencyRepository {
 
   Future<void> changeMainCurrency(int id) async {
     final db = await _sossoldiDB.database;
-
-    await db.rawUpdate("UPDATE currency SET mainCurrency = 0");
-    await db.rawUpdate("UPDATE currency SET mainCurrency = 1 WHERE id = $id");
+    await db.transaction((txn) async {
+      await txn.rawUpdate(
+        'UPDATE $currencyTable SET ${CurrencyFields.mainCurrency} = 0',
+      );
+      await txn.rawUpdate(
+        'UPDATE $currencyTable SET ${CurrencyFields.mainCurrency} = 1'
+        ' WHERE ${CurrencyFields.id} = ?',
+        [id],
+      );
+    });
   }
 }

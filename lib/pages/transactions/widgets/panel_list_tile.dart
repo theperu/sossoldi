@@ -140,9 +140,10 @@ class PanelListTile extends ConsumerWidget {
     grouped.forEach((categoryId, list) {
       double sum = 0;
       for (final t in list) {
+        final mainAmount = (t.amountInMainCurrency ?? t.amount).toDouble();
         sum += t.type == TransactionType.income
-            ? t.amount.toDouble()
-            : -t.amount.toDouble();
+            ? mainAmount
+            : -mainAmount;
       }
 
       final headerName = list.first.categoryName ?? 'Uncategorized';
@@ -244,9 +245,10 @@ class TransactionsList extends StatelessWidget {
           const Divider(indent: 15, endIndent: 15),
       itemBuilder: (context, index) {
         final transaction = transactions[index];
+        final mainAmount = transaction.amountInMainCurrency ?? transaction.amount;
         final amount = transaction.type == TransactionType.income
-            ? transaction.amount
-            : -transaction.amount;
+          ? mainAmount
+          : -mainAmount;
         return Container(
           padding: const EdgeInsets.all(Sizes.lg),
           child: Row(

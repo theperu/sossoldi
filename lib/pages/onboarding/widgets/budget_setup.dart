@@ -7,6 +7,8 @@ import '../../../constants/style.dart';
 import '../../../model/budget.dart';
 import '../../../providers/budgets_provider.dart';
 import '../../../providers/categories_provider.dart';
+import '../../../providers/currency_provider.dart';
+import '../../../services/currency/currency_display_policy.dart';
 import '../../../ui/device.dart';
 import '../../categories/create_edit_category_page.dart';
 import 'account_setup.dart';
@@ -36,6 +38,7 @@ class _BudgetSetupState extends ConsumerState<BudgetSetup> {
           (total, budget) => total + budget.amountLimit,
         ) ??
         0;
+    final currencyState = ref.watch(currencyStateProvider);
     final categoriesGrid = ref.watch(allParentCategoriesProvider);
     return Scaffold(
       backgroundColor: blue7,
@@ -45,7 +48,7 @@ class _BudgetSetupState extends ConsumerState<BudgetSetup> {
           child: Column(
             children: [
               Text(
-                "STEP 1 OF 2",
+                "STEP 2 OF 3",
                 style: Theme.of(context).textTheme.labelSmall,
               ),
               const SizedBox(height: Sizes.xl),
@@ -151,7 +154,9 @@ class _BudgetSetupState extends ConsumerState<BudgetSetup> {
                                   ).textTheme.displayMedium,
                                 ),
                                 TextSpan(
-                                  text: "€",
+                                  text: CurrencyDisplayPolicy.displayTokenForCode(
+                                    currencyState.code,
+                                  ),
                                   style: Theme.of(context).textTheme.bodyMedium
                                       ?.apply(
                                         fontFeatures: [

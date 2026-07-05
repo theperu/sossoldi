@@ -9,10 +9,13 @@ class BankAccountFields extends BaseEntityFields {
   static String symbol = 'symbol';
   static String color = 'color';
   static String startingValue = 'startingValue';
+  static String currency = 'currency';
+  static String startingValueInMainCurrency = 'startingValueInMainCurrency';
   static String active = 'active';
   static String countNetWorth = 'countNetWorth';
   static String mainAccount = 'mainAccount';
   static String total = 'total';
+  static String totalInMainCurrency = 'totalInMainCurrency';
   static String order = 'position';
   static String createdAt = BaseEntityFields.getCreatedAt;
   static String updatedAt = BaseEntityFields.getUpdatedAt;
@@ -24,6 +27,8 @@ class BankAccountFields extends BaseEntityFields {
     symbol,
     color,
     startingValue,
+    currency,
+    startingValueInMainCurrency,
     active,
     countNetWorth,
     mainAccount,
@@ -39,11 +44,14 @@ class BankAccount extends BaseEntity {
   final String symbol;
   final int color;
   final num startingValue;
+  final String currency;
+  final num startingValueInMainCurrency;
   final bool active;
   final bool countNetWorth;
   final bool mainAccount;
   final int order;
   final num? total;
+  final num? totalInMainCurrency;
 
   const BankAccount({
     super.id,
@@ -51,15 +59,19 @@ class BankAccount extends BaseEntity {
     required this.symbol,
     required this.color,
     required this.startingValue,
+    this.currency = 'EUR',
+    num? startingValueInMainCurrency,
     required this.active,
     required this.countNetWorth,
     required this.mainAccount,
     required this.order,
     this.total,
+    this.totalInMainCurrency,
     super.createdAt,
     super.updatedAt,
     super.deletedAt,
-  });
+  }) : startingValueInMainCurrency =
+           startingValueInMainCurrency ?? startingValue;
 
   BankAccount copy({
     int? id,
@@ -67,6 +79,8 @@ class BankAccount extends BaseEntity {
     String? symbol,
     int? color,
     num? startingValue,
+    String? currency,
+    num? startingValueInMainCurrency,
     bool? active,
     bool? countNetWorth,
     bool? mainAccount,
@@ -74,20 +88,26 @@ class BankAccount extends BaseEntity {
     DateTime? createdAt,
     DateTime? updatedAt,
     DateTime? deletedAt,
+    num? total,
+    num? totalInMainCurrency,
   }) => BankAccount(
     id: id ?? this.id,
     name: name ?? this.name,
     symbol: symbol ?? this.symbol,
     color: color ?? this.color,
     startingValue: startingValue ?? this.startingValue,
+    currency: currency ?? this.currency,
+    startingValueInMainCurrency:
+      startingValueInMainCurrency ?? this.startingValueInMainCurrency,
     active: active ?? this.active,
     countNetWorth: countNetWorth ?? this.countNetWorth,
     mainAccount: mainAccount ?? this.mainAccount,
     order: order ?? this.order,
+    total: total ?? this.total,
+    totalInMainCurrency: totalInMainCurrency ?? this.totalInMainCurrency,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
     deletedAt: deletedAt ?? this.deletedAt,
-    total: total,
   );
 
   static BankAccount fromJson(Map<String, Object?> json) => BankAccount(
@@ -96,11 +116,16 @@ class BankAccount extends BaseEntity {
     symbol: json[BankAccountFields.symbol] as String,
     color: json[BankAccountFields.color] as int,
     startingValue: json[BankAccountFields.startingValue] as num,
+    currency: (json[BankAccountFields.currency] as String?) ?? 'EUR',
+    startingValueInMainCurrency:
+      (json[BankAccountFields.startingValueInMainCurrency] as num?) ??
+      (json[BankAccountFields.startingValue] as num),
     active: json[BankAccountFields.active] == 1 ? true : false,
     countNetWorth: json[BankAccountFields.countNetWorth] == 1 ? true : false,
     mainAccount: json[BankAccountFields.mainAccount] == 1 ? true : false,
     order: json[BankAccountFields.order] as int,
     total: json[BankAccountFields.total] as num?,
+    totalInMainCurrency: json[BankAccountFields.totalInMainCurrency] as num?,
     createdAt: DateTime.parse(json[BaseEntityFields.createdAt] as String),
     updatedAt: DateTime.parse(json[BaseEntityFields.updatedAt] as String),
     deletedAt: json[BaseEntityFields.deletedAt] != null
@@ -114,6 +139,9 @@ class BankAccount extends BaseEntity {
     BankAccountFields.symbol: symbol,
     BankAccountFields.color: color,
     BankAccountFields.startingValue: startingValue.toCurrency().toNum(),
+    BankAccountFields.currency: currency,
+    BankAccountFields.startingValueInMainCurrency:
+      startingValueInMainCurrency.toDouble(),
     BankAccountFields.active: active && !delete ? 1 : 0,
     BankAccountFields.countNetWorth: countNetWorth && !delete ? 1 : 0,
     BankAccountFields.mainAccount: mainAccount && !delete ? 1 : 0,

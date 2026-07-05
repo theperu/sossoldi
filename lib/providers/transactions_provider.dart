@@ -8,6 +8,7 @@ import 'accounts_provider.dart';
 import 'budgets_provider.dart';
 import 'categories_provider.dart';
 import 'dashboard_provider.dart';
+import 'exchange_rate_provider.dart';
 import 'statistics_provider.dart';
 
 part 'transactions_provider.g.dart';
@@ -171,8 +172,8 @@ class TransactionsNotifier extends _$TransactionsNotifier {
       (prev, transaction) => transaction.type == TransactionType.transfer
           ? prev
           : transaction.type == TransactionType.expense
-          ? prev - transaction.amount
-          : prev + transaction.amount,
+          ? prev - (transaction.amountInMainCurrency ?? transaction.amount)
+          : prev + (transaction.amountInMainCurrency ?? transaction.amount),
     );
     return transactions;
   }
@@ -194,6 +195,39 @@ class TransactionsNotifier extends _$TransactionsNotifier {
     state = const AsyncLoading();
 
     final TransactionType t = type ?? ref.read(selectedTransactionTypeProvider);
+    final selectedAccount = (account ?? ref.read(selectedBankAccountProvider))!;
+    final transactionCurrency = selectedAccount.currency;
+    final exchangeRateService = ref.read(exchangeRateServiceProvider);
+
+    double convertedAmount;
+    try {
+      convertedAmount = await exchangeRateService.convertToMain(
+        amount.toDouble(),
+        transactionCurrency,
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return;
+    }
+
+    num? transferDestinationAmount;
+    num? transferEffectiveRate;
+    if (t == TransactionType.transfer &&
+        account == null &&
+        ref.read(bankAccountTransferProvider) != null) {
+      final destinationCurrency = ref.read(bankAccountTransferProvider)!.currency;
+      try {
+        final rate = await exchangeRateService.getRate(
+          from: transactionCurrency,
+          to: destinationCurrency,
+        );
+        transferDestinationAmount = amount * rate;
+        transferEffectiveRate = rate;
+      } catch (error, stackTrace) {
+        state = AsyncError(error, stackTrace);
+        return;
+      }
+    }
 
     Transaction transaction = Transaction(
       date: date ?? ref.read(selectedDateProvider),
@@ -201,6 +235,10 @@ class TransactionsNotifier extends _$TransactionsNotifier {
       type: t,
       note: label,
       idBankAccount: (account ?? ref.read(selectedBankAccountProvider))!.id!,
+      amountInMainCurrency: convertedAmount,
+      transferDestinationAmount: transferDestinationAmount,
+      transferEffectiveRate: transferEffectiveRate,
+        currency: transactionCurrency,
       idBankAccountTransfer: account != null
           ? null
           : ref.read(bankAccountTransferProvider)?.id,
@@ -247,10 +285,42 @@ class TransactionsNotifier extends _$TransactionsNotifier {
     final bankAccount = ref.read(selectedBankAccountProvider)!;
     final bankAccountTransfer = ref.read(bankAccountTransferProvider);
     final category = ref.read(selectedCategoryProvider);
+    final exchangeRateService = ref.read(exchangeRateServiceProvider);
+
+    double convertedAmount;
+    try {
+      convertedAmount = await exchangeRateService.convertToMain(
+        amount.toDouble(),
+        bankAccount.currency,
+      );
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return;
+    }
+
+    num? transferDestinationAmount;
+    num? transferEffectiveRate;
+    if (type == TransactionType.transfer && bankAccountTransfer != null) {
+      try {
+        final rate = await exchangeRateService.getRate(
+          from: bankAccount.currency,
+          to: bankAccountTransfer.currency,
+        );
+        transferDestinationAmount = amount * rate;
+        transferEffectiveRate = rate;
+      } catch (error, stackTrace) {
+        state = AsyncError(error, stackTrace);
+        return;
+      }
+    }
 
     Transaction transactionCopy = transaction.copy(
       date: date,
       amount: amount,
+      amountInMainCurrency: convertedAmount,
+      transferDestinationAmount: transferDestinationAmount,
+      transferEffectiveRate: transferEffectiveRate,
+      currency: bankAccount.currency,
       type: type,
       note: label,
       idBankAccount: bankAccount.id!,

@@ -4,7 +4,11 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../model/recurring_transaction.dart';
 import '../../../model/transaction.dart';
+import '../../currency/exchange_rate_service.dart';
+import 'account_repository.dart';
 import '../sossoldi_database.dart';
+import 'currency_repository.dart';
+import 'exchange_rate_repository.dart';
 import 'transactions_repository.dart';
 
 part 'recurring_transactions_repository.g.dart';
@@ -143,7 +147,7 @@ class RecurringTransactionRepository {
           throw Exception('No amount provided for entity "$entity"');
         }
 
-        populateRecurringTransaction(
+        await populateRecurringTransaction(
           entity,
           lastTransactionDate,
           transaction,
@@ -177,12 +181,12 @@ class RecurringTransactionRepository {
     return Transaction.fromJson(result.first).date;
   }
 
-  void populateRecurringTransaction(
+  Future<void> populateRecurringTransaction(
     String scope,
     DateTime lastTransactionDate,
     RecurringTransaction transaction,
     int amount,
-  ) {
+  ) async {
     if (amount == 0) {
       throw Exception('No amount provided for entity "$scope"');
     }
@@ -253,11 +257,29 @@ class RecurringTransactionRepository {
       }
     }
 
+    final accountRepository = AccountRepository(database: _sossoldiDB);
+    final currencyRepository = CurrencyRepository(database: _sossoldiDB);
+    final exchangeRateService = ExchangeRateService(
+      exchangeRateRepository: ExchangeRateRepository(database: _sossoldiDB),
+      currencyRepository: currencyRepository,
+    );
+    final account = await accountRepository.selectById(transaction.idBankAccount);
+    final accountCurrency = account.currency;
+    final mainCurrencyCode = (await currencyRepository.getSelectedCurrency()).code;
+    final convertedAmount = await exchangeRateService.convertToMain(
+      transaction.amount.toDouble(),
+      accountCurrency,
+    );
+
     for (var tr in transactions2Add) {
       // insert a new transaction
       Transaction addTr = Transaction(
         date: tr,
         amount: transaction.amount,
+        amountInMainCurrency: convertedAmount,
+        currency: accountCurrency == mainCurrencyCode
+            ? mainCurrencyCode
+            : accountCurrency,
         type: transaction.type,
         note: transaction.note,
         idCategory: transaction.idCategory,
@@ -267,10 +289,10 @@ class RecurringTransactionRepository {
         createdAt: DateTime.now(),
         updatedAt: DateTime.now(),
       );
-      TransactionsRepository(database: _sossoldiDB).insert(addTr);
+      await TransactionsRepository(database: _sossoldiDB).insert(addTr);
     }
 
     // update the last insertion date
-    updateItem(transaction.copy(lastInsertion: now));
+    await updateItem(transaction.copy(lastInsertion: now));
   }
 }

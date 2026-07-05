@@ -228,15 +228,6 @@ class SossoldiDatabase {
         (16, 'Salary', 'IN', 'work', 5, '', null, 6, '${DateTime.now()}', '${DateTime.now()}');
     ''');
 
-    // Add currencies
-    await _database?.execute('''
-      INSERT INTO currency(symbol, code, name, mainCurrency) VALUES
-        ('€', 'EUR', 'Euro', 1),
-        ('\$', 'USD', 'United States Dollar', 0),
-        ('CHF', 'CHF', 'Switzerland Franc', 0),
-        ('£', 'GBP', 'United Kingdom Pound', 0);
-    ''');
-
     // Add fake budgets
     await _database?.execute('''
       INSERT INTO budget(idCategory, name, amountLimit, active, createdAt, updatedAt) VALUES

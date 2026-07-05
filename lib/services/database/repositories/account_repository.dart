@@ -86,11 +86,22 @@ class AccountRepository {
 
     final result = await db.rawQuery('''
       SELECT b.*, (b.${BankAccountFields.startingValue} +
-      SUM(CASE WHEN t.${TransactionFields.type} = 'IN' OR t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccountTransfer} = b.${BankAccountFields.id} THEN t.${TransactionFields.amount}
+      SUM(CASE WHEN t.${TransactionFields.type} = 'IN' THEN t.${TransactionFields.amount}
+               WHEN t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccountTransfer} = b.${BankAccountFields.id}
+                 THEN COALESCE(t.${TransactionFields.transferDestinationAmount}, t.${TransactionFields.amount})
                ELSE 0 END) -
       SUM(CASE WHEN t.${TransactionFields.type} = 'OUT' OR t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccount} = b.${BankAccountFields.id} THEN t.${TransactionFields.amount}
                ELSE 0 END)
-    ) as ${BankAccountFields.total}
+    ) as ${BankAccountFields.total},
+    (b.${BankAccountFields.startingValueInMainCurrency} +
+      SUM(CASE WHEN t.${TransactionFields.type} = 'IN' THEN COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount})
+               WHEN t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccountTransfer} = b.${BankAccountFields.id}
+                 THEN COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount})
+               ELSE 0 END) -
+      SUM(CASE WHEN t.${TransactionFields.type} = 'OUT' OR t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccount} = b.${BankAccountFields.id}
+               THEN COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount})
+               ELSE 0 END)
+    ) as ${BankAccountFields.totalInMainCurrency}
       FROM $bankAccountTable as b
       LEFT JOIN "$transactionTable" as t
              ON (t.${TransactionFields.idBankAccount} = b.${BankAccountFields.id} OR
@@ -218,6 +229,38 @@ class AccountRepository {
     );
   }
 
+  Future<double> netWorthTotal() async {
+    final db = await _sossoldiDB.database;
+
+    final result = await db.rawQuery('''
+      SELECT COALESCE(SUM(account_total), 0) AS total
+      FROM (
+        SELECT
+          b.${BankAccountFields.startingValueInMainCurrency}
+          + COALESCE(SUM(CASE
+              WHEN t.${TransactionFields.type} = 'IN'
+                OR (t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccountTransfer} = b.${BankAccountFields.id})
+                THEN COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount})
+              WHEN t.${TransactionFields.type} = 'OUT'
+                OR (t.${TransactionFields.type} = 'TRSF' AND t.${TransactionFields.idBankAccount} = b.${BankAccountFields.id})
+                THEN -COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount})
+              ELSE 0
+            END), 0) AS account_total
+        FROM $bankAccountTable b
+        LEFT JOIN "$transactionTable" t
+          ON t.${TransactionFields.idBankAccount} = b.${BankAccountFields.id}
+          OR t.${TransactionFields.idBankAccountTransfer} = b.${BankAccountFields.id}
+        WHERE b.${BankAccountFields.active} = 1
+          AND b.${BankAccountFields.countNetWorth} = 1
+          AND b.${BankAccountFields.deletedAt} IS NULL
+        GROUP BY b.${BankAccountFields.id}, b.${BankAccountFields.startingValueInMainCurrency}
+      )
+    ''');
+
+    final value = result.first['total'];
+    return value is num ? value.toDouble() : 0;
+  }
+
   Future<num?> getAccountSum(int? id) async {
     final db = await _sossoldiDB.database;
 
@@ -253,7 +296,11 @@ class AccountRepository {
             if (transaction[TransactionFields.idBankAccount] == id) {
               balance -= amount;
             } else {
-              balance += amount;
+              final incomingAmount =
+                  (transaction[TransactionFields.transferDestinationAmount]
+                      as num?) ??
+                  amount;
+              balance += incomingAmount;
             }
             break;
         }
@@ -308,7 +355,10 @@ class AccountRepository {
     final resultQuery = await db.rawQuery('''
       SELECT
         strftime('%Y-%m-%d', ${TransactionFields.date}) as day,
-        SUM(CASE WHEN (${TransactionFields.type} = 'IN' OR (${TransactionFields.type} = 'TRSF' AND ${TransactionFields.idBankAccountTransfer} = $accountId)) THEN ${TransactionFields.amount} ELSE 0 END) as income,
+        SUM(CASE WHEN ${TransactionFields.type} = 'IN' THEN ${TransactionFields.amount}
+            WHEN ${TransactionFields.type} = 'TRSF' AND ${TransactionFields.idBankAccountTransfer} = $accountId
+              THEN COALESCE(${TransactionFields.transferDestinationAmount}, ${TransactionFields.amount})
+            ELSE 0 END) as income,
         SUM(CASE WHEN ${TransactionFields.type} = 'OUT' OR (${TransactionFields.type} = 'TRSF' AND ${TransactionFields.idBankAccount} = $accountId) THEN ${TransactionFields.amount} ELSE 0 END) as expense
       FROM "$transactionTable"
       WHERE $sqlFilters
@@ -363,7 +413,10 @@ class AccountRepository {
     final resultQuery = await db.rawQuery('''
       SELECT
         strftime('%Y-%m', ${TransactionFields.date}) as month,
-        SUM(CASE WHEN (${TransactionFields.type} = 'IN' OR (${TransactionFields.type} = 'TRSF' AND ${TransactionFields.idBankAccountTransfer} = $accountId)) THEN ${TransactionFields.amount} ELSE 0 END) as income,
+        SUM(CASE WHEN ${TransactionFields.type} = 'IN' THEN ${TransactionFields.amount}
+            WHEN ${TransactionFields.type} = 'TRSF' AND ${TransactionFields.idBankAccountTransfer} = $accountId
+              THEN COALESCE(${TransactionFields.transferDestinationAmount}, ${TransactionFields.amount})
+            ELSE 0 END) as income,
         SUM(CASE WHEN ${TransactionFields.type} = 'OUT' OR (${TransactionFields.type} = 'TRSF' AND ${TransactionFields.idBankAccount} = $accountId) THEN ${TransactionFields.amount} ELSE 0 END) as expense
       FROM "$transactionTable"
       WHERE $sqlFilters

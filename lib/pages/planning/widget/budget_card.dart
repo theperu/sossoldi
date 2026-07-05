@@ -65,7 +65,12 @@ class BudgetCard extends ConsumerWidget {
                                             t.categoryParent ==
                                                 budget.idCategory,
                                       )
-                                      .fold(0.0, (sum, t) => sum + t.amount)
+                                      .fold(
+                                        0.0,
+                                        (sum, t) =>
+                                            sum +
+                                            (t.amountInMainCurrency ?? t.amount),
+                                      )
                                       .toCurrency(),
                                 );
                                 CategoryTransaction? category = categories

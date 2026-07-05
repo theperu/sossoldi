@@ -236,8 +236,8 @@ class TransactionsRepository {
     final result = await db.rawQuery('''
       SELECT
         strftime('$frequencyDateParser', t.${TransactionFields.date}) as $freqencyString,
-        SUM(CASE WHEN t.${TransactionFields.type} = 'IN' THEN t.${TransactionFields.amount} ELSE 0 END) as income,
-        SUM(CASE WHEN t.${TransactionFields.type} = 'OUT' THEN t.${TransactionFields.amount} ELSE 0 END) as expense
+        SUM(CASE WHEN t.${TransactionFields.type} = 'IN' THEN COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount}) ELSE 0 END) as income,
+        SUM(CASE WHEN t.${TransactionFields.type} = 'OUT' THEN COALESCE(t.${TransactionFields.amountInMainCurrency}, t.${TransactionFields.amount}) ELSE 0 END) as expense
       FROM "$transactionTable" t
       JOIN $bankAccountTable b ON t.${TransactionFields.idBankAccount} = b.${BankAccountFields.id}
       WHERE $sqlFilters AND b.${BankAccountFields.countNetWorth} = 1 AND b.${BankAccountFields.active} = 1

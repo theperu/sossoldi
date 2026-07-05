@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../constants/style.dart';
 import '../../../model/currency.dart';
 import '../../../providers/currency_provider.dart';
+import '../../../providers/exchange_rate_provider.dart';
 import '../../../providers/authentication_provider.dart';
 import '../../../providers/theme_provider.dart';
 import '../../../services/database/repositories/currency_repository.dart';
@@ -35,6 +36,7 @@ class _GeneralSettingsPageState extends ConsumerState<GeneralSettingsPage> {
   Widget build(BuildContext context) {
     final appThemeState = ref.watch(appThemeStateProvider);
     final currencyState = ref.watch(currencyStateProvider);
+    final latestRateDate = ref.watch(latestRateDateProvider);
     Future<List<Currency>> currencyList = ref
         .read(currencyRepositoryProvider)
         .selectAll();
@@ -148,6 +150,26 @@ class _GeneralSettingsPageState extends ConsumerState<GeneralSettingsPage> {
                       color: Theme.of(context).colorScheme.onPrimary,
                     ),
                   ),
+                ),
+              ],
+            ),
+            Row(
+              children: [
+                Text(
+                  "Exchange rates last updated",
+                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
+                ),
+                const Spacer(),
+                latestRateDate.when(
+                  data: (value) => Text(value ?? 'Never'),
+                  loading: () => const SizedBox(
+                    width: 16,
+                    height: 16,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  ),
+                  error: (_, _) => const Text('Never'),
                 ),
               ],
             ),

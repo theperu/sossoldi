@@ -52,10 +52,12 @@ class _TransactionsListState extends State<TransactionsList> {
     for (final transaction in transactions) {
       final date = transaction.date.formatYMD();
       final currentTotal = totals[date] ?? 0.0;
+      final mainAmount =
+          (transaction.amountInMainCurrency ?? transaction.amount).toDouble();
 
       final amount = switch (transaction.type) {
-        TransactionType.expense => -transaction.amount.toDouble(),
-        TransactionType.income => transaction.amount.toDouble(),
+        TransactionType.expense => -mainAmount,
+        TransactionType.income => mainAmount,
         TransactionType.transfer => 0.0, // Explicitly handle transfers
       };
 
@@ -208,7 +210,7 @@ class TransactionTile extends ConsumerWidget {
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   Text(
-                    '${transaction.type == TransactionType.expense ? "-" : ""}${transaction.amount.toCurrency()}',
+                    '${transaction.type == TransactionType.expense ? "-" : ""}${(transaction.amountInMainCurrency ?? transaction.amount).toCurrency()}',
                     overflow: TextOverflow.ellipsis,
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
                       color: transaction.type.toColor(

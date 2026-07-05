@@ -6,6 +6,7 @@ import "package:flutter_riverpod/flutter_riverpod.dart";
 import "../../../../constants/style.dart";
 import '../../../../providers/currency_provider.dart';
 import '../../../../providers/transactions_provider.dart';
+import '../../../../services/currency/currency_display_policy.dart';
 import '../../../../ui/formatters/decimal_text_input_formatter.dart';
 import '../../../../ui/device.dart';
 
@@ -23,6 +24,10 @@ class _AmountWidgetState extends ConsumerState<AmountWidget> {
   Widget build(BuildContext context) {
     final selectedType = ref.watch(selectedTransactionTypeProvider);
     final currencyState = ref.watch(currencyStateProvider);
+    final selectedAccount = ref.watch(selectedBankAccountProvider);
+    final token = CurrencyDisplayPolicy.displayTokenForCode(
+      selectedAccount?.currency ?? currencyState.code,
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(
@@ -35,7 +40,7 @@ class _AmountWidgetState extends ConsumerState<AmountWidget> {
           hintText: "0",
           border: InputBorder.none,
           prefixText: ' ',
-          suffixText: currencyState.symbol,
+          suffixText: token,
           suffixStyle: Theme.of(context).textTheme.headlineMedium!.copyWith(
             color: selectedType.toColor(
               brightness: Theme.of(context).brightness,

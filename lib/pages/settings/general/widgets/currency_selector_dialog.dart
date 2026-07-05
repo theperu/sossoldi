@@ -4,8 +4,43 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../constants/style.dart';
 import '../../../../model/currency.dart';
 import '../../../../providers/currency_provider.dart';
+import '../../../../services/currency/currency_display_policy.dart';
 
 class CurrencySelectorDialog {
+  static Future<void> _showRecalculationWarning(
+    BuildContext context,
+    WidgetRef ref,
+    Currency selected,
+  ) async {
+    await showDialog(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Change main currency?'),
+        content: const Text(
+          'Historical converted amounts in the transactions list will be recalculated to the selected main currency. This can change previously displayed totals.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogContext),
+            child: const Text('CANCEL'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              await ref
+                  .read(currencyStateProvider.notifier)
+                  .setSelectedCurrency(selected);
+              if (dialogContext.mounted) {
+                Navigator.pop(dialogContext);
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('CONFIRM'),
+          ),
+        ],
+      ),
+    );
+  }
+
   static void selectCurrencyDialog(
     BuildContext context,
     Currency currency,
@@ -39,10 +74,17 @@ class CurrencySelectorDialog {
                         itemBuilder: (BuildContext context, int i) {
                           return GestureDetector(
                             onTap: () {
-                              ref
-                                  .read(currencyStateProvider.notifier)
-                                  .setSelectedCurrency(snapshot.data![i]);
-                              Navigator.pop(context);
+                              final selected = snapshot.data![i];
+                              if (currency.code == selected.code) {
+                                Navigator.pop(context);
+                                return;
+                              }
+
+                              _showRecalculationWarning(
+                                context,
+                                ref,
+                                selected,
+                              );
                             },
                             child: ListTile(
                               tileColor: Colors.transparent,
@@ -53,7 +95,7 @@ class CurrencySelectorDialog {
                                     ? blue5
                                     : grey1,
                                 child: Text(
-                                  snapshot.data![i].symbol,
+                                  CurrencyDisplayPolicy.displayTokenForCode(snapshot.data![i].code),
                                   style: TextStyle(
                                     color: Theme.of(
                                       context,

@@ -30,6 +30,8 @@ class AccountsTab extends ConsumerWidget {
 
     for (Transaction transaction in transactions.value ?? []) {
       final accountId = transaction.idBankAccount;
+      final mainAmount =
+          (transaction.amountInMainCurrency ?? transaction.amount).toDouble();
       if (transaction.type == TransactionType.income) {
         if (accountToTransactionsIncome.containsKey(accountId)) {
           accountToTransactionsIncome[accountId]?.add(transaction);
@@ -41,15 +43,12 @@ class AccountsTab extends ConsumerWidget {
         }
 
         // update total amount for the account
-        totalIncome += transaction.amount;
+        totalIncome += mainAmount;
         if (accountToAmountIncome.containsKey(accountId)) {
           accountToAmountIncome[accountId] =
-              accountToAmountIncome[accountId]! + transaction.amount.toDouble();
+              accountToAmountIncome[accountId]! + mainAmount;
         } else {
-          accountToAmountIncome.putIfAbsent(
-            accountId,
-            () => transaction.amount.toDouble(),
-          );
+          accountToAmountIncome.putIfAbsent(accountId, () => mainAmount);
         }
       } else if (transaction.type == TransactionType.expense) {
         if (accountToTransactionsExpense.containsKey(accountId)) {
@@ -62,16 +61,12 @@ class AccountsTab extends ConsumerWidget {
         }
 
         // update total amount for the account
-        totalExpense -= transaction.amount;
+        totalExpense -= mainAmount;
         if (accountToAmountExpense.containsKey(accountId)) {
           accountToAmountExpense[accountId] =
-              accountToAmountExpense[accountId]! -
-              transaction.amount.toDouble();
+              accountToAmountExpense[accountId]! - mainAmount;
         } else {
-          accountToAmountExpense.putIfAbsent(
-            accountId,
-            () => -transaction.amount.toDouble(),
-          );
+          accountToAmountExpense.putIfAbsent(accountId, () => -mainAmount);
         }
       }
     }

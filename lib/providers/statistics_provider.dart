@@ -1,8 +1,8 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../services/database/repositories/account_repository.dart';
 import '../services/database/repositories/transactions_repository.dart';
-import 'accounts_provider.dart';
 
 part 'statistics_provider.g.dart';
 
@@ -34,12 +34,7 @@ class Statistics extends _$Statistics {
         .read(transactionsRepositoryProvider)
         .currentYearMontlyTransactions();
 
-    final accountsAsync = ref.read(accountsProvider);
-    final accounts = accountsAsync.value ?? [];
-    double currentBalance = accounts.fold(
-      0.0,
-      (sum, account) => sum + (account.total ?? 0),
-    );
+    double currentBalance = await ref.read(accountRepositoryProvider).netWorthTotal();
 
     List<FlSpot> spots = [];
     double runningBalance = currentBalance;

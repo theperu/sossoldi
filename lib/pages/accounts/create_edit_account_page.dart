@@ -1,9 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../model/currency.dart';
 import '../../providers/accounts_provider.dart';
 import '../../constants/constants.dart';
 import '../../constants/style.dart';
 import '../../providers/currency_provider.dart';
+import '../../providers/exchange_rate_provider.dart';
+import '../../services/currency/currency_display_policy.dart';
+import '../../services/database/repositories/currency_repository.dart';
 import '../../ui/formatters/decimal_text_input_formatter.dart';
 import '../../ui/device.dart';
 import '../../ui/extensions.dart';
@@ -26,6 +30,8 @@ class _CreateEditAccountPage extends ConsumerState<CreateEditAccountPage> {
   bool mainAccount = false;
 
   bool showAccountIcons = false;
+  bool _didRateRetry = false;
+  String? _selectedCurrencyCode;
 
   @override
   void initState() {
@@ -37,6 +43,9 @@ class _CreateEditAccountPage extends ConsumerState<CreateEditAccountPage> {
       accountColor = selectedAccount.color;
       countNetWorth = selectedAccount.countNetWorth;
       mainAccount = selectedAccount.mainAccount;
+      _selectedCurrencyCode = selectedAccount.currency;
+    } else {
+      _selectedCurrencyCode = ref.read(currencyStateProvider).code;
     }
     super.initState();
   }
@@ -52,6 +61,77 @@ class _CreateEditAccountPage extends ConsumerState<CreateEditAccountPage> {
   Widget build(BuildContext context) {
     final selectedAccount = ref.watch(selectedAccountProvider);
     final currencyState = ref.watch(currencyStateProvider);
+    final currencyListFuture = ref.read(currencyRepositoryProvider).selectAll();
+    final selectedCurrencyCode = _selectedCurrencyCode ?? currencyState.code;
+    final balanceToken = CurrencyDisplayPolicy.displayTokenForCode(
+      selectedAccount?.currency ?? selectedCurrencyCode,
+    );
+
+    Future<void> saveAccount({required bool fromRetry}) async {
+      if (!fromRetry) {
+        _didRateRetry = false;
+      }
+
+      if (selectedAccount != null) {
+        await ref
+            .read(accountsProvider.notifier)
+            .updateAccount(
+              name: nameController.text,
+              icon: accountIcon,
+              color: accountColor,
+              balance: balanceController.text.toNum(),
+              countNetWorth: countNetWorth,
+              mainAccount: mainAccount,
+            );
+      } else {
+        await ref
+            .read(accountsProvider.notifier)
+            .addAccount(
+              name: nameController.text,
+              icon: accountIcon,
+              color: accountColor,
+              countNetWorth: countNetWorth,
+              mainAccount: mainAccount,
+              currencyCode: selectedCurrencyCode,
+              startingValue: balanceController.text.toNum(),
+            );
+      }
+
+      final accountState = ref.read(accountsProvider);
+      if (!accountState.hasError) {
+        if (context.mounted) {
+          Navigator.of(context).pop();
+        }
+        return;
+      }
+
+      if (!context.mounted) {
+        return;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            accountState.error?.toString() ??
+                'Unable to save account. Fetch latest rates and try again.',
+          ),
+          action: SnackBarAction(
+            label: 'Fetch latest rates',
+            onPressed: () async {
+              try {
+                await ref.read(exchangeRateServiceProvider).updateAll();
+                if (!_didRateRetry) {
+                  _didRateRetry = true;
+                  await saveAccount(fromRetry: true);
+                }
+              } catch (_) {
+                // Keep current error message on network failure.
+              }
+            },
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(
@@ -89,30 +169,7 @@ class _CreateEditAccountPage extends ConsumerState<CreateEditAccountPage> {
             ),
             child: ElevatedButton(
               onPressed: () async {
-                if (selectedAccount != null) {
-                  await ref
-                      .read(accountsProvider.notifier)
-                      .updateAccount(
-                        name: nameController.text,
-                        icon: accountIcon,
-                        color: accountColor,
-                        balance: balanceController.text.toNum(),
-                        countNetWorth: countNetWorth,
-                        mainAccount: mainAccount,
-                      );
-                } else {
-                  await ref
-                      .read(accountsProvider.notifier)
-                      .addAccount(
-                        name: nameController.text,
-                        icon: accountIcon,
-                        color: accountColor,
-                        countNetWorth: countNetWorth,
-                        mainAccount: mainAccount,
-                        startingValue: balanceController.text.toNum(),
-                      );
-                }
-                if (context.mounted) Navigator.of(context).pop();
+                await saveAccount(fromRetry: false);
               },
               child: Text(
                 "${selectedAccount == null ? "CREATE" : "UPDATE"} ACCOUNT",
@@ -124,6 +181,64 @@ class _CreateEditAccountPage extends ConsumerState<CreateEditAccountPage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            if (selectedAccount == null)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.fromLTRB(
+                  Sizes.lg,
+                  Sizes.xl,
+                  Sizes.lg,
+                  0,
+                ),
+                padding: const EdgeInsets.fromLTRB(
+                  Sizes.lg,
+                  Sizes.md,
+                  Sizes.lg,
+                  Sizes.md,
+                ),
+                decoration: BoxDecoration(
+                  color: Theme.of(context).colorScheme.surface,
+                  borderRadius: BorderRadius.circular(Sizes.borderRadiusSmall),
+                ),
+                child: FutureBuilder<List<Currency>>(
+                  future: currencyListFuture,
+                  builder: (context, snapshot) {
+                    final items = snapshot.data ?? const <Currency>[];
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'CURRENCY',
+                          style: Theme.of(context).textTheme.labelLarge,
+                        ),
+                        DropdownButtonFormField<String>(
+                          initialValue: selectedCurrencyCode,
+                          isExpanded: true,
+                          decoration: const InputDecoration(
+                            hintText: 'Select account currency',
+                          ),
+                          items: items
+                              .map(
+                                (c) => DropdownMenuItem<String>(
+                                  value: c.code,
+                                  child: Text(
+                                    '${CurrencyDisplayPolicy.displayTokenForCode(c.code)} ${c.code} - ${c.name}',
+                                  ),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (value) {
+                            if (value == null) {
+                              return;
+                            }
+                            setState(() => _selectedCurrencyCode = value);
+                          },
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
             Container(
               width: double.infinity,
               margin: const EdgeInsets.symmetric(
@@ -348,7 +463,7 @@ class _CreateEditAccountPage extends ConsumerState<CreateEditAccountPage> {
                     decoration: InputDecoration(
                       hintText:
                           "${selectedAccount == null ? "Initial" : "Current"} Balance",
-                      suffixText: currencyState.symbol,
+                      suffixText: balanceToken,
                     ),
                     keyboardType: const TextInputType.numberWithOptions(
                       decimal: true,

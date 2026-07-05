@@ -8,7 +8,7 @@ import '../../ui/widgets/line_chart.dart';
 import '../../ui/widgets/transactions_list.dart';
 import '../../providers/accounts_provider.dart';
 import '../../model/transaction.dart';
-import '../../providers/currency_provider.dart';
+import '../../services/currency/currency_display_policy.dart';
 import '../../providers/transactions_provider.dart';
 import '../../ui/formatters/decimal_text_input_formatter.dart';
 import '../../ui/device.dart';
@@ -40,7 +40,9 @@ class _AccountPage extends ConsumerState<AccountPage> {
       selectedAccountCurrentYearMonthlyBalanceProvider,
     );
     final transactions = ref.watch(selectedAccountLastTransactionsProvider);
-    final currencyState = ref.watch(currencyStateProvider);
+    final accountToken = CurrencyDisplayPolicy.displayTokenForCode(
+      account?.currency,
+    );
 
     ref.listen(
       duplicatedTransactionProvider,
@@ -80,7 +82,7 @@ class _AccountPage extends ConsumerState<AccountPage> {
                         ),
                       ),
                       Text(
-                        currencyState.symbol,
+                        accountToken,
                         style: const TextStyle(
                           color: white,
                           fontSize: 22.0,
@@ -134,7 +136,7 @@ class _AccountPage extends ConsumerState<AccountPage> {
                                 width: 40,
                                 child: Center(
                                   child: Text(
-                                    currencyState.symbol,
+                                    accountToken,
                                     style: Theme.of(
                                       context,
                                     ).textTheme.titleLarge,

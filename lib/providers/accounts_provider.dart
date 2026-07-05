@@ -6,7 +6,9 @@ import '../model/bank_account.dart';
 import '../model/transaction.dart';
 import '../services/database/repositories/account_repository.dart';
 import '../services/database/repositories/recurring_transactions_repository.dart';
+import 'currency_provider.dart';
 import 'dashboard_provider.dart';
+import 'exchange_rate_provider.dart';
 import 'recurring_transactions_provider.dart';
 import 'transactions_provider.dart';
 
@@ -26,6 +28,11 @@ class SelectedAccount extends _$SelectedAccount {
   BankAccount? build() => null;
 
   void setAccount(BankAccount? account) => state = account;
+}
+
+@riverpod
+String? selectedAccountCurrency(Ref ref) {
+  return ref.watch(selectedAccountProvider)?.currency;
 }
 
 @Riverpod(keepAlive: true)
@@ -80,16 +87,32 @@ class Accounts extends _$Accounts {
     required String name,
     required String icon,
     required int color,
+    String? currencyCode,
     bool active = true,
     bool countNetWorth = true,
     bool mainAccount = false,
     num startingValue = 0,
   }) async {
+    final mainCurrency = ref.read(currencyStateProvider);
+    final selectedCurrency = currencyCode ?? mainCurrency.code;
+
+    double startingValueInMainCurrency;
+    try {
+      startingValueInMainCurrency = await ref
+          .read(exchangeRateServiceProvider)
+          .convertToMain(startingValue.toDouble(), selectedCurrency);
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      return;
+    }
+
     BankAccount account = BankAccount(
       name: name,
       symbol: icon,
       color: color,
       startingValue: startingValue,
+      currency: selectedCurrency,
+      startingValueInMainCurrency: startingValueInMainCurrency,
       active: active,
       countNetWorth: countNetWorth,
       mainAccount: mainAccount,
